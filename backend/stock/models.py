@@ -3,7 +3,7 @@ from django.db import models
 # Create your models here.
 
 class PotentialStock(models.Model):
-    hsn_code = models.IntegerField(unique=True)
+    hsn_code = models.IntegerField()
     product_name = models.CharField(max_length=500)
 
     def __str__(self):
@@ -18,6 +18,7 @@ class StockIn(models.Model):
         max_digits=10,
         decimal_places=5
     )
+    total_quantity = models.IntegerField(default=0)
     purchased_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -32,11 +33,22 @@ class StockOut(models.Model):
         max_digits=10, 
         decimal_places=5
     )
-
     sold_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.product.product_name} - {self.quantity}"
+
+class TotalStock(models.Model):
+    product = models.OneToOneField(
+        PotentialStock, on_delete=models.PROTECT, related_name="total_stock"
+    )
+    total_in = models.IntegerField(default=0)
+    total_out = models.IntegerField(default=0)
+    current_stock = models.IntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.product.product_name} - {self.current_stock}"
 
     
 

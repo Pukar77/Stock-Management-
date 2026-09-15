@@ -29,11 +29,8 @@ class SignUPViews(APIView):
             )
         else:
             return Response(
-                {
-                    "message":f"Something went wrong in validation, {serializer.errors}",
-                    "status":status.HTTP_400_BAD_REQUEST
-                }
-                
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
             )
 
 

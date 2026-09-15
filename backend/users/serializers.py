@@ -8,6 +8,13 @@ User = get_user_model()
 
 class SignupSerializer(serializers.ModelSerializer):
 
+    password = serializers.CharField(
+        write_only=True,
+        min_length=6,
+        error_messages={
+            'min_length': 'Password must be at least 6 characters.'
+        }
+    )
 
     class Meta:
         model = User
@@ -18,9 +25,15 @@ class SignupSerializer(serializers.ModelSerializer):
             'first_name',
             'last_name',
             'phone_number',
-            'email',
-            'phone_number'
+            'email'
         ]
+
+    def validate_phone_number(self, value):
+        if len(value) != 10 or not value.isdigit():
+            raise serializers.ValidationError(
+                "Phone number must be exactly 10 digits."
+            )
+        return value
 
     def create(self, validated_data):
 
@@ -49,17 +62,17 @@ class LoginSerializer(serializers.Serializer):
             password=password
         )
 
-        if not user.is_active:
+        if not user:
             raise serializers.ValidationError(
                 {
-                "message":"This account is diabled"
+                    "message":"Invalid Username or password"
                 }
             )
 
-        if not user:
-            return serializers.ValidationError(
+        if not user.is_active:
+            raise serializers.ValidationError(
                 {
-                    "message":"Invalid Username or password"
+                "message":"This account is disabled"
                 }
             )
 

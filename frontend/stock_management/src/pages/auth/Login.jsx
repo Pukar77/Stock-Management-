@@ -1,16 +1,16 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import api from '../api/axios'
-import FormInput from '../components/FormInput'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import api from '../../api/axios'
+import FormInput from '../../components/common/FormInput'
+import Alert from '../../components/common/Alert'
 
 export default function Login() {
+  const { login } = useAuth()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState({})
-  const [success, setSuccess] = useState(null)
-  const [form, setForm] = useState({
-    username: '',
-    password: '',
-  })
+  const [form, setForm] = useState({ username: '', password: '' })
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -20,18 +20,12 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setErrors({})
-    setSuccess(null)
     setLoading(true)
 
     try {
       const res = await api.post('/users/login/', form)
-      const { user, tokens } = res.data
-
-      localStorage.setItem('access_token', tokens.access)
-      localStorage.setItem('refresh_token', tokens.refresh)
-      localStorage.setItem('user', JSON.stringify(user))
-
-      setSuccess(`Welcome back, ${user.first_name || user.username}!`)
+      login(res.data)
+      navigate('/')
     } catch (err) {
       if (err.response?.data) {
         const data = err.response.data
@@ -69,24 +63,14 @@ export default function Login() {
             <p className="text-gray-500 mt-1">Log in to your account</p>
           </div>
 
-          {errors.general && (
-            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-              {errors.general}
-            </div>
-          )}
-
-          {success && (
-            <div className="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
-              {success}
-            </div>
-          )}
+          <Alert message={errors.general} />
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <FormInput
               label="Username"
               id="username"
               name="username"
-              placeholder="Rimal77"
+              placeholder="Enter your username"
               value={form.username}
               onChange={handleChange}
               error={errors.username}
@@ -98,7 +82,7 @@ export default function Login() {
               id="password"
               name="password"
               type="password"
-              placeholder="pukar@123"
+              placeholder="Enter your password"
               value={form.password}
               onChange={handleChange}
               error={errors.password}
