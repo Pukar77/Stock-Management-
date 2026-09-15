@@ -5,6 +5,7 @@ import Modal from '../../components/common/Modal'
 import FormInput from '../../components/common/FormInput'
 import Alert from '../../components/common/Alert'
 import Spinner from '../../components/common/Spinner'
+import { extractApiError } from '../../utils/apiError'
 
 export default function PotentialStock() {
   const [products, setProducts] = useState([])
@@ -61,15 +62,9 @@ export default function PotentialStock() {
       setModalOpen(false)
       fetchProducts()
     } catch (err) {
-      if (err.response?.data?.errors) {
-        const fieldErrors = {}
-        for (const [key, val] of Object.entries(err.response.data.errors)) {
-          fieldErrors[key] = Array.isArray(val) ? val[0] : val
-        }
-        setErrors(fieldErrors)
-      } else if (err.response?.data?.message) {
-        setErrors({ general: err.response.data.message })
-      }
+      const { fieldErrors, general } = extractApiError(err)
+      setAlert({ type: 'success', message: '' })
+      setErrors({ ...fieldErrors, general })
     }
   }
 
@@ -80,7 +75,8 @@ export default function PotentialStock() {
       setAlert({ type: 'success', message: 'Product deleted' })
       fetchProducts()
     } catch (err) {
-      setAlert({ type: 'error', message: err.response?.data?.message || 'Failed to delete' })
+      const { general } = extractApiError(err)
+      setAlert({ type: 'error', message: general || 'Failed to delete' })
     }
   }
 

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import FormInput from '../../components/common/FormInput'
 import Alert from '../../components/common/Alert'
+import { extractApiError } from '../../utils/apiError'
 
 export default function Signup() {
   const navigate = useNavigate()
@@ -34,23 +35,8 @@ export default function Signup() {
       setSuccess('Account created! Redirecting to login...')
       setTimeout(() => navigate('/login'), 1500)
     } catch (err) {
-      if (err.response?.data) {
-        const data = err.response.data
-        if (typeof data === 'object') {
-          const fieldErrors = {}
-          for (const [key, val] of Object.entries(data)) {
-            if (key === 'message' || key === 'status') continue
-            fieldErrors[key] = Array.isArray(val) ? val[0] : val
-          }
-          if (Object.keys(fieldErrors).length > 0) {
-            setErrors(fieldErrors)
-          } else if (data.message) {
-            setErrors({ general: data.message })
-          }
-        }
-      } else {
-        setErrors({ general: 'Something went wrong. Please try again.' })
-      }
+      const { fieldErrors, general } = extractApiError(err)
+      setErrors({ ...fieldErrors, general })
     } finally {
       setLoading(false)
     }

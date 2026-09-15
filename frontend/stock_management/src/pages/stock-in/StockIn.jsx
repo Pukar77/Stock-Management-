@@ -6,6 +6,7 @@ import FormInput from '../../components/common/FormInput'
 import Alert from '../../components/common/Alert'
 import Spinner from '../../components/common/Spinner'
 import { formatDate } from '../../utils/format'
+import { extractApiError } from '../../utils/apiError'
 
 export default function StockIn() {
   const [records, setRecords] = useState([])
@@ -59,16 +60,9 @@ export default function StockIn() {
       setForm({ product_name: '', hsn_code: '', quantity: '', purchase_price: '' })
       fetchRecords()
     } catch (err) {
-      if (err.response?.data?.errors) {
-        const fieldErrors = {}
-        const apiErrors = err.response.data.errors
-        for (const [key, val] of Object.entries(apiErrors)) {
-          fieldErrors[key] = Array.isArray(val) ? val[0] : val
-        }
-        setErrors(fieldErrors)
-      } else if (err.response?.data?.message) {
-        setErrors({ general: err.response.data.message })
-      }
+      const { fieldErrors, general } = extractApiError(err)
+      setAlert({ type: 'success', message: '' })
+      setErrors({ ...fieldErrors, general })
     } finally {
       setSubmitting(false)
     }
