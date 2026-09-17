@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.db.models import Sum
 from django.db.models.signals import post_delete, post_save
@@ -5,6 +6,11 @@ from django.dispatch import receiver
 
 
 class PotentialStock(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='potential_stocks',
+    )
     hsn_code = models.IntegerField()
     product_name = models.CharField(max_length=500)
 
@@ -13,6 +19,11 @@ class PotentialStock(models.Model):
 
 
 class StockIn(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='stock_in_records',
+    )
     product = models.ForeignKey(
         PotentialStock, on_delete=models.PROTECT, related_name='stock_in'
     )
@@ -29,6 +40,11 @@ class StockIn(models.Model):
 
 
 class StockOut(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='stock_out_records',
+    )
     product = models.ForeignKey(
         PotentialStock, on_delete=models.PROTECT, related_name="stock_out"
     )
@@ -44,6 +60,11 @@ class StockOut(models.Model):
 
 
 class TotalStock(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='total_stock_records',
+    )
     product = models.OneToOneField(
         PotentialStock, on_delete=models.PROTECT, related_name="total_stock"
     )
@@ -56,12 +77,14 @@ class TotalStock(models.Model):
         return f"{self.product.product_name} - {self.current_stock}"
 
     @classmethod
-    def stock_for_product(cls, product):
+    def stock_for_product(cls, product, user=None):
+        if user is not None:
+            return cls.objects.get_or_create(product=product, defaults={'user': user})[0]
         return cls.objects.get_or_create(product=product)[0]
 
     @classmethod
-    def refresh_for_product(cls, product):
-        total_stock = cls.stock_for_product(product)
+    def refresh_for_product(cls, product, user=None):
+        total_stock = cls.stock_for_product(product, user=user)
         total_stock.total_in = (
             StockIn.objects.filter(product=product).aggregate(total=Sum('quantity'))['total'] or 0
         )
@@ -73,19 +96,19 @@ class TotalStock(models.Model):
         return total_stock
 
 
-def recompute_stock_in_totals(product):
+def recompute_stock_in_totals(product, user=None):
     running_total = 0
     for stock_in in StockIn.objects.filter(product=product).order_by('id'):
         running_total += stock_in.quantity
         StockIn.objects.filter(pk=stock_in.pk).update(total_quantity=running_total)
-    TotalStock.refresh_for_product(product)
+    TotalStock.refresh_for_product(product, user=user)
 
 
 @receiver([post_save, post_delete], sender=StockIn)
 def sync_stock_in_totals(sender, instance, **kwargs):
-    recompute_stock_in_totals(instance.product)
+    recompute_stock_in_totals(instance.product, user=getattr(instance, 'user', None))
 
 
 @receiver([post_save, post_delete], sender=StockOut)
 def sync_stock_out_totals(sender, instance, **kwargs):
-    TotalStock.refresh_for_product(instance.product)
+    TotalStock.refresh_for_product(instance.product, user=getattr(instance, 'user', None))

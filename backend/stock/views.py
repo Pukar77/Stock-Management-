@@ -17,6 +17,12 @@ class BaseModelViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     success_message = "Item created successfully"
 
+    def get_queryset(self):
+        return self.queryset.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
     @staticmethod
     def _first_error_message(errors):
         for key in ('non_field_errors', 'detail', 'message'):

@@ -10,10 +10,11 @@ class InsufficientStockError(Exception):
 class StockService:
 
     @staticmethod
-    def create_stock_in(product, quantity, purchase_price):
+    def create_stock_in(product, quantity, purchase_price, user=None):
         with transaction.atomic():
             stock_in = StockIn.objects.create(
                 product=product,
+                user=user,
                 quantity=quantity,
                 purchase_price=purchase_price,
             )
@@ -21,10 +22,13 @@ class StockService:
             return stock_in
 
     @staticmethod
-    def create_stock_out(product, quantity, sales_price):
+    def create_stock_out(product, quantity, sales_price, user=None):
         with transaction.atomic():
             total_stock, _ = (
-                TotalStock.objects.select_for_update().get_or_create(product=product)
+                TotalStock.objects.select_for_update().get_or_create(
+                    product=product,
+                    defaults={'user': user or product.user},
+                )
             )
             if total_stock.current_stock < quantity:
                 raise InsufficientStockError(
@@ -32,6 +36,7 @@ class StockService:
                 )
             return StockOut.objects.create(
                 product=product,
+                user=user,
                 quantity=quantity,
                 sales_price=sales_price,
             )

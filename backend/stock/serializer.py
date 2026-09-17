@@ -50,9 +50,11 @@ class StockInSerializer(serializers.ModelSerializer):
         return obj.product.product_name
 
     def validate(self, data):
+        user = self.context['request'].user
         product = PotentialStock.objects.filter(
             hsn_code=data.get('hsn_code'),
             product_name=data.get('product_name'),
+            user=user,
         ).first()
         if not product:
             raise serializers.ValidationError(
@@ -104,13 +106,15 @@ class StockOutSerializer(serializers.ModelSerializer):
     def get_current_stock(self, obj):
         total_stock = getattr(obj.product, 'total_stock', None)
         if total_stock is None:
-            total_stock = TotalStock.stock_for_product(obj.product)
+            total_stock = TotalStock.stock_for_product(obj.product, user=obj.user)
         return total_stock.current_stock
 
     def validate(self, data):
+        user = self.context['request'].user
         product = PotentialStock.objects.filter(
             hsn_code=data.get('hsn_code'),
             product_name=data.get('product_name'),
+            user=user,
         ).first()
         if not product:
             raise serializers.ValidationError(
