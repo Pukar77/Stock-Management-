@@ -55,12 +55,12 @@ jobs:
           source ../venv/bin/activate
           python manage.py check
 
-      # 8. Run database migrations
-      - name: Run migrations
-        working-directory: ./backend
-        run: |
-          source ../venv/bin/activate
-          python manage.py migrate --noinput
+      # # 8. Run database migrations
+      # - name: Run migrations
+      #   working-directory: ./backend
+      #   run: |
+      #     source ../venv/bin/activate
+      #     python manage.py migrate --noinput
 
       # 9. Run tests
       - name: Run tests
