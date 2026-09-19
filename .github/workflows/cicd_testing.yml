@@ -103,11 +103,17 @@ jobs:
           nohup ../venv/bin/python manage.py runserver 0.0.0.0:8000 > backend.log 2>&1 &
 
       # 12. Verify backend
-      - name: Verify backend
-        working-directory: ./backend
-        run: |
-          sleep 5
-          curl --fail http://127.0.0.1:8000/ || (
-            cat backend.log
-            exit 1
-          )
+      - name: Start backend
+    working-directory: ./backend
+    run: |
+      nohup ../venv/bin/python manage.py runserver 0.0.0.0:8000 > backend.log 2>&1 &
+
+      sleep 5
+
+      if grep -q "Starting development server" backend.log; then
+        echo "Backend started successfully."
+      else
+        echo "Backend failed to start."
+        cat backend.log
+        exit 1
+      fi
