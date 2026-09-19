@@ -9,7 +9,24 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    # Temporary PostgreSQL database for CI
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: stock_management_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
+
       # 1. Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,60 +39,70 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.txt
 
-      # 3. Create virtual environment
+      # 3. Check Python version
+      - name: Check Python version
+        run: |
+          python --version
+          which python
+
+      # 4. Create virtual environment
       - name: Create virtual environment
         run: |
           python -m venv venv
           source venv/bin/activate
           python -m pip install --upgrade pip
 
-      # 4. Install dependencies
+      # 5. Install dependencies
       - name: Install dependencies
         run: |
           source venv/bin/activate
           pip install -r requirements.txt
 
-      # 5. Set Django environment variables
+      # 6. Create CI .env file
+      - name: Create CI environment file
+        run: |
+          cat > .env << 'EOF'
+          DB_NAME=stock_management_test
+          DB_USER=postgres
+          DB_PASSWORD=postgres
+          DB_HOST=localhost
+          DB_PORT=5432
+          EOF
+
+      # 7. Set Django environment variables
       - name: Set environment variables
         run: |
           echo "DJANGO_SETTINGS_MODULE=stock_management.settings" >> $GITHUB_ENV
           echo "DEBUG=False" >> $GITHUB_ENV
 
-      # 6. Create .env file from GitHub Secret
-      - name: Create .env file
-        env:
-          ENV_FILE: ${{ secrets.ENV_FILE }}
-        run: |
-          printf '%s\n' "$ENV_FILE" > .env
-
-      # 7. Run Django system checks
+      # 8. Run Django system checks
       - name: Django checks
         working-directory: ./backend
         run: |
           source ../venv/bin/activate
           python manage.py check
 
-      # # 8. Run database migrations
-      # - name: Run migrations
-      #   working-directory: ./backend
-      #   run: |
-      #     source ../venv/bin/activate
-      #     python manage.py migrate --noinput
+      # 9. Run database migrations
+      - name: Run migrations
+        working-directory: ./backend
+        run: |
+          source ../venv/bin/activate
+          python manage.py migrate --noinput
 
-      # 9. Run tests
+      # 10. Run tests
       - name: Run tests
         working-directory: ./backend
         run: |
           source ../venv/bin/activate
           python manage.py test
 
-      # 10. Start backend
+      # 11. Start backend
       - name: Start backend
         working-directory: ./backend
         run: |
           nohup ../venv/bin/python manage.py runserver 0.0.0.0:8000 > backend.log 2>&1 &
 
-      # 11. Verify backend
+      # 12. Verify backend
       - name: Verify backend
         working-directory: ./backend
         run: |
